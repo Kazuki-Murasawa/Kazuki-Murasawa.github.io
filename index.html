@@ -3,201 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ToDo App with Timestamp</title>
+    <title>Cloud Sync ToDo</title>
     <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            width: 95%;
-            max-width: 500px;
-        }
-        h2 { text-align: center; color: #333; margin-top: 0; }
-        
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 1.5rem;
-        }
-        .inputs-row {
-            display: flex;
-            gap: 10px;
-        }
-        input[type="text"] {
-            flex: 2;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            outline: none;
-        }
-        input[type="date"] {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-        }
-        button#add-btn {
-            padding: 12px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
+        /* デザインは前回のスマホ対応版を継承 */
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+        .auth-section { text-align: right; margin-bottom: 10px; }
+        .hidden { display: none; }
+        input, button { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
+        .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        button { cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold; }
+        button.logout { background: #6c757d; padding: 5px 10px; font-size: 12px; }
         ul { list-style: none; padding: 0; }
-        li {
-            background: #fff;
-            border-bottom: 1px solid #eee;
-            padding: 12px 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .task-info {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex: 1;
-            cursor: pointer;
-        }
-        .task-text { font-size: 1.1rem; color: #333; font-weight: 500; }
-        
-        /* 日付ラベルのスタイル */
-        .date-labels {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .date-badge {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
-        .due-badge { background: #fff3cd; color: #856404; } /* 期限用（黄色系） */
-        .created-badge { background: #e2e3e5; color: #41464b; } /* 作成日用（グレー系） */
-
-        .completed .task-text { text-decoration: line-through; color: #bbb; }
-        .completed .date-badge { opacity: 0.5; }
-
-        .delete-btn {
-            background: #ff4d4d;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
+        li { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .completed { text-decoration: line-through; color: #bbb; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>My ToDo List</h2>
-    <div class="input-group">
-        <input type="text" id="todo-input" placeholder="タスクを入力...">
-        <div class="inputs-row">
-            <input type="date" id="todo-date">
-            <button id="add-btn">追加</button>
-        </div>
+    <div class="auth-section">
+        <button id="login-btn">Googleでログイン</button>
+        <span id="user-info" class="hidden">
+            <span id="user-name"></span>
+            <button id="logout-btn" class="logout">ログアウト</button>
+        </span>
     </div>
-    <ul id="todo-list"></ul>
+
+    <h2>Cloud ToDo</h2>
+    
+    <div id="app-content" class="hidden">
+        <div class="input-group">
+            <input type="text" id="todo-input" placeholder="何をする？">
+            <input type="date" id="todo-date">
+            <button id="add-btn">保存</button>
+        </div>
+        <ul id="todo-list"></ul>
+    </div>
+    <p id="msg">ログインしてください</p>
 </div>
 
-<script>
-    const input = document.getElementById('todo-input');
-    const dateInput = document.getElementById('todo-date');
-    const addBtn = document.getElementById('add-btn');
-    const todoList = document.getElementById('todo-list');
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    document.addEventListener('DOMContentLoaded', loadTasks);
+    // ★手順1でメモした自分の設定に書き換えてください★
+    const firebaseConfig = {
+        apiKey: "AIzaSyB6LzMo95UjoFkGncbRqU7Kis4fGCmK3Pw",
+        authDomain: "my-sync-todo.firebaseapp.com",
+        projectId: "my-sync-todo",
+        storageBucket: "my-sync-todo.firebasestorage.app",
+        messagingSenderId: "536879813996",
+        appId: "1:536879813996:web:ded67500cd6bdb80804f49"
+    };
 
-    function addTask() {
-        const taskValue = input.value.trim();
-        const dueValue = dateInput.value;
-        
-        if (taskValue === "") return;
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
 
-        // 現在の日時を取得してフォーマットする
-        const now = new Date();
-        const createdValue = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+    let currentUser = null;
+    let unsubscribe = null; // リアルタイム更新の停止用
 
-        createTaskElement(taskValue, dueValue, createdValue, false);
-        saveTasks();
-        
-        input.value = "";
-        dateInput.value = "";
-    }
+    // --- ログイン・ログアウト処理 ---
+    document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
+    document.getElementById('logout-btn').onclick = () => signOut(auth);
 
-    function createTaskElement(text, dueDate, createdAt, isCompleted) {
-        const li = document.createElement('li');
-        if (isCompleted) li.classList.add('completed');
-
-        const dueDisplay = dueDate ? `期限: ${dueDate}` : "期限なし";
-        const createdDisplay = `作成: ${createdAt}`;
-
-        li.innerHTML = `
-            <div class="task-info">
-                <span class="task-text">${text}</span>
-                <div class="date-labels">
-                    <span class="date-badge due-badge">${dueDisplay}</span>
-                    <span class="date-badge created-badge">${createdDisplay}</span>
-                </div>
-            </div>
-            <button class="delete-btn">削除</button>
-        `;
-
-        li.querySelector('.task-info').addEventListener('click', () => {
-            li.classList.toggle('completed');
-            saveTasks();
-        });
-
-        li.querySelector('.delete-btn').addEventListener('click', () => {
-            li.remove();
-            saveTasks();
-        });
-
-        todoList.appendChild(li);
-    }
-
-    function saveTasks() {
-        const tasks = [];
-        document.querySelectorAll('li').forEach(li => {
-            tasks.push({
-                text: li.querySelector('.task-text').innerText,
-                dueDate: li.querySelector('.due-badge').innerText.replace('期限: ', '').replace('期限なし', ''),
-                createdAt: li.querySelector('.created-badge').innerText.replace('作成: ', ''),
-                completed: li.classList.contains('completed')
-            });
-        });
-        localStorage.setItem('myTimestampTodoList', JSON.stringify(tasks));
-    }
-
-    function loadTasks() {
-        const savedTasks = JSON.parse(localStorage.getItem('myTimestampTodoList'));
-        if (savedTasks) {
-            savedTasks.forEach(task => {
-                createTaskElement(task.text, task.dueDate, task.createdAt, task.completed);
-            });
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            showApp(user);
+            fetchTasks(user.uid);
+        } else {
+            currentUser = null;
+            hideApp();
         }
+    });
+
+    function showApp(user) {
+        document.getElementById('login-btn').classList.add('hidden');
+        document.getElementById('user-info').classList.remove('hidden');
+        document.getElementById('user-name').innerText = user.displayName;
+        document.getElementById('app-content').classList.remove('hidden');
+        document.getElementById('msg').classList.add('hidden');
     }
 
-    addBtn.addEventListener('click', addTask);
-    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
-</script>
+    function hideApp() {
+        document.getElementById('login-btn').classList.remove('hidden');
+        document.getElementById('user-info').classList.add('hidden');
+        document.getElementById('app-content').classList.add('hidden');
+        document.getElementById('msg').classList.remove('hidden');
+        document.getElementById('todo-list').innerHTML = '';
+        if (unsubscribe) unsubscribe();
+    }
 
+    // --- データベース操作 ---
+
+    // タスク追加
+    document.getElementById('add-btn').onclick = async () => {
+        const text = document.getElementById('todo-input').value;
+        const due = document.getElementById('todo-date').value;
+        if (!text || !currentUser) return;
+
+        await addDoc(collection(db, "tasks"), {
+            uid: currentUser.uid, // 誰のタスクか識別
+            text: text,
+            due: due,
+            completed: false,
+            createdAt: new Date()
+        });
+        document.getElementById('todo-input').value = '';
+    };
+
+    // タスクのリアルタイム読み込み
+    function fetchTasks(uid) {
+        const q = query(collection(db, "tasks"), where("uid", "==", uid), orderBy("createdAt", "desc"));
+        
+        // データの変化を監視して自動更新
+        unsubscribe = onSnapshot(q, (snapshot) => {
+            const todoList = document.getElementById('todo-list');
+            todoList.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const task = doc.data();
+                renderTask(doc.id, task);
+            });
+        });
+    }
+
+    function renderTask(id, task) {
+        const li = document.createElement('li');
+        if (task.completed) li.classList.add('completed');
+        li.innerHTML = `
+            <div onclick="toggleTask('${id}', ${task.completed})">
+                <span>${task.text}</span><br>
+                <small>期限: ${task.due || 'なし'}</small>
+            </div>
+            <button onclick="deleteTask('${id}')">削除</button>
+        `;
+        document.getElementById('todo-list').appendChild(li);
+    }
+
+    // グローバル関数として定義
+    window.toggleTask = async (id, currentStatus) => {
+        await updateDoc(doc(db, "tasks", id), { completed: !currentStatus });
+    };
+
+    window.deleteTask = async (id) => {
+        if(confirm("削除しますか？")) await deleteDoc(doc(db, "tasks", id));
+    };
+</script>
 </body>
 </html>
