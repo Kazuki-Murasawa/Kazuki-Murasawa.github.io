@@ -34,11 +34,11 @@
     
     <div id="app-content" class="hidden">
         <div class="input-group">
-            <input type="text" id="todo-input" placeholder="何をする？">
-            <input type="date" id="todo-date">
-            <button id="add-btn">保存</button>
+            <input type="text" id="wiki-title" placeholder="記事のタイトル（例：電力市場の動向について）">
+            <textarea id="wiki-content" placeholder="本文を入力..." style="height: 150px; padding: 10px; border-radius: 8px; border: 1px solid #ddd;"></textarea>
+            <button id="add-btn">記事を投稿する</button>
         </div>
-        <ul id="todo-list"></ul>
+        <ul id="todo-list"></ul> </div>
     </div>
     <p id="msg">ログインしてください</p>
 </div>
@@ -101,20 +101,23 @@
 
     // --- データベース操作 ---
 
-    // タスク追加
+    // 記事追加ボタンの処理
     document.getElementById('add-btn').onclick = async () => {
-        const text = document.getElementById('todo-input').value;
-        const due = document.getElementById('todo-date').value;
-        if (!text || !currentUser) return;
+        const title = document.getElementById('wiki-title').value;
+        const content = document.getElementById('wiki-content').value;
+        if (!title || !content || !currentUser) return;
 
-        await addDoc(collection(db, "tasks"), {
-            uid: currentUser.uid, // 誰のタスクか識別
-            text: text,
-            due: due,
-            completed: false,
+        await addDoc(collection(db, "wiki_pages"), { // コレクション名を wiki_pages に変更
+            uid: currentUser.uid,
+            userName: currentUser.displayName, // 誰が書いたか保存
+            title: title,
+            content: content,
             createdAt: new Date()
         });
-        document.getElementById('todo-input').value = '';
+        
+        // 入力欄を空にする
+        document.getElementById('wiki-title').value = '';
+        document.getElementById('wiki-content').value = '';
     };
 
     // タスクのリアルタイム読み込み
