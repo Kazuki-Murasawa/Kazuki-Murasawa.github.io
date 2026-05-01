@@ -7,7 +7,7 @@
     <style>
         /* デザインは前回のスマホ対応版を継承 */
         body { font-family: sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
-        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
         .auth-section { text-align: right; margin-bottom: 10px; }
         .hidden { display: none; }
         input, button { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
@@ -30,7 +30,7 @@
         </span>
     </div>
 
-    <h2>Cloud ToDo</h2>
+    <h2>Corporate Wiki</h2>
     
     <div id="app-content" class="hidden">
         <div class="input-group">
@@ -38,7 +38,7 @@
             <textarea id="wiki-content" placeholder="本文を入力..." style="height: 150px; padding: 10px; border-radius: 8px; border: 1px solid #ddd;"></textarea>
             <button id="add-btn">記事を投稿する</button>
         </div>
-        <ul id="todo-list"></ul> </div>
+        <ul id="todo-list"></ul>
     </div>
     <p id="msg">ログインしてください</p>
 </div>
@@ -75,7 +75,7 @@
         if (user) {
             currentUser = user;
             showApp(user);
-            fetchTasks(user.uid);
+            fetchWikiPages();
         } else {
             currentUser = null;
             hideApp();
@@ -121,40 +121,50 @@
     };
 
     // タスクのリアルタイム読み込み
-    function fetchTasks(uid) {
-        const q = query(collection(db, "tasks"), where("uid", "==", uid), orderBy("createdAt", "desc"));
+    function fetchWikiPages() {
+        // 1. 参照先を "tasks" から "wiki_pages" に変更
+        // 2. 社内Wikiなので、自分の記事だけでなく「全員分」見れるように where("uid", "==", uid) を削除します
+        const q = query(collection(db, "wiki_pages"), orderBy("createdAt", "desc"));
         
         // データの変化を監視して自動更新
         unsubscribe = onSnapshot(q, (snapshot) => {
-            const todoList = document.getElementById('todo-list');
-            todoList.innerHTML = '';
+            const listElement = document.getElementById('todo-list'); // 名前はそのまま活用
+            listElement.innerHTML = '';
             snapshot.forEach((doc) => {
-                const task = doc.data();
-                renderTask(doc.id, task);
+                const data = doc.data();
+                renderWikiPage(doc.id, data);// 描画関数へ
             });
         });
     }
 
-    function renderTask(id, task) {
+    function renderWikiPage(id, data) {
         const li = document.createElement('li');
-        if (task.completed) li.classList.add('completed');
+        li.style.display = "block"; // 縦長に使う
+        li.style.marginBottom = "20px";
+        li.style.borderBottom = "2px solid #f0f2f5";
+        
         li.innerHTML = `
-            <div onclick="toggleTask('${id}', ${task.completed})">
-                <span>${task.text}</span><br>
-                <small>期限: ${task.due || 'なし'}</small>
+            <div style="width: 100%;">
+                <h3 style="margin: 0 0 10px 0; color: #007bff;">${data.title}</h3>
+                <div style="white-space: pre-wrap; color: #333; line-height: 1.6; background: #fafafa; padding: 15px; border-radius: 8px;">${data.content}</div>
+                <div style="margin-top: 8px; font-size: 0.85rem; color: #888; text-align: right;">
+                    投稿者: <strong>${data.userName || '不明'}</strong> | ${data.createdAt?.toDate().toLocaleString()}
+                </div>
             </div>
-            <button onclick="deleteTask('${id}')">削除</button>
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button onclick="deletePage('${id}', '${data.uid}')" style="background: #dc3545; padding: 4px 8px; font-size: 12px;">記事を削除</button>
+            </div>
         `;
         document.getElementById('todo-list').appendChild(li);
     }
 
-    // グローバル関数として定義
-    window.toggleTask = async (id, currentStatus) => {
-        await updateDoc(doc(db, "tasks", id), { completed: !currentStatus });
-    };
-
-    window.deleteTask = async (id) => {
-        if(confirm("削除しますか？")) await deleteDoc(doc(db, "tasks", id));
+    // 削除関数もWiki用に対応
+    window.deletePage = async (id, authorUid) => {
+        if (currentUser.uid !== authorUid) {
+            alert("自分が書いた記事以外は削除できません");
+            return;
+        }
+        if(confirm("この記事を削除しますか？")) await deleteDoc(doc(db, "wiki_pages", id));
     };
 </script>
 </body>
