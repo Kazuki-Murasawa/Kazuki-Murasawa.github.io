@@ -151,7 +151,7 @@
         li.innerHTML = `
             <div style="width: 100%;">
                 <h3 style="margin: 0 0 10px 0; color: #007bff;">${data.title}</h3>
-                <div style="white-space: pre-wrap; color: #333; line-height: 1.6; background: #fafafa; padding: 15px; border-radius: 8px;">${data.content}</div>
+                <div style="color: #333; line-height: 1.6; background: #fafafa; padding: 15px; border-radius: 8px;">${markdownHtml}</div>
                 <div style="margin-top: 8px; font-size: 0.85rem; color: #888; text-align: right;">
                     投稿者: <strong>${data.userName || '不明'}</strong> | ${data.createdAt?.toDate().toLocaleString()}
                 </div>
