@@ -3,22 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Sync ToDo</title>
+    <title>Corporate Wiki</title>
     <style>
-        /* デザインは前回のスマホ対応版を継承 */
         body { font-family: sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
         .auth-section { text-align: right; margin-bottom: 10px; }
         .hidden { display: none; }
-        input, button { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
+        input, button, textarea { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; font-family: sans-serif; }
         .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         button { cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold; }
         button.logout { background: #6c757d; padding: 5px 10px; font-size: 12px; }
         ul { list-style: none; padding: 0; }
         li { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .completed { text-decoration: line-through; color: #bbb; }
+        
+        /* Markdown表示用の微調整（リストなどの弾丸を出すため） */
+        .wiki-markdown-content ul { list-style: disc; padding-left: 20px; margin: 10px 0; }
+        .wiki-markdown-content ol { list-style: decimal; padding-left: 20px; margin: 10px 0; }
+        .wiki-markdown-content h1, .wiki-markdown-content h2, .wiki-markdown-content h3 { margin-top: 10px; margin-bottom: 5px; }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -36,7 +38,7 @@
     <div id="app-content" class="hidden">
         <div class="input-group">
             <input type="text" id="wiki-title" placeholder="記事のタイトル（例：電力市場の動向について）">
-            <textarea id="wiki-content" placeholder="本文を入力..." style="height: 150px; padding: 10px; border-radius: 8px; border: 1px solid #ddd;"></textarea>
+            <textarea id="wiki-content" placeholder="本文を入力...（Markdownが使えます）" style="height: 150px; padding: 10px; border-radius: 8px; border: 1px solid #ddd;"></textarea>
             <button id="add-btn">記事を投稿する</button>
         </div>
         <ul id="todo-list"></ul>
@@ -47,9 +49,11 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    
+    // ★Markdownライブラリをモジュール形式で直接読み込む（確実な方法）
+    import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
 
-    // ★手順1でメモした自分の設定に書き換えてください★
     const firebaseConfig = {
         apiKey: "AIzaSyB6LzMo95UjoFkGncbRqU7Kis4fGCmK3Pw",
         authDomain: "my-sync-todo.firebaseapp.com",
@@ -60,13 +64,12 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    console.log("Firebase initialized:", app.name);
     const auth = getAuth(app);
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
     let currentUser = null;
-    let unsubscribe = null; // リアルタイム更新の停止用
+    let unsubscribe = null;
 
     // --- ログイン・ログアウト処理 ---
     document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
@@ -102,56 +105,51 @@
 
     // --- データベース操作 ---
 
-    // 記事追加ボタンの処理
     document.getElementById('add-btn').onclick = async () => {
         const title = document.getElementById('wiki-title').value;
         const content = document.getElementById('wiki-content').value;
         if (!title || !content || !currentUser) return;
 
-        await addDoc(collection(db, "wiki_pages"), { // コレクション名を wiki_pages に変更
+        await addDoc(collection(db, "wiki_pages"), {
             uid: currentUser.uid,
-            userName: currentUser.displayName, // 誰が書いたか保存
+            userName: currentUser.displayName,
             title: title,
             content: content,
             createdAt: new Date()
         });
         
-        // 入力欄を空にする
         document.getElementById('wiki-title').value = '';
         document.getElementById('wiki-content').value = '';
     };
 
-    // タスクのリアルタイム読み込み
     function fetchWikiPages() {
-        // 1. 参照先を "tasks" から "wiki_pages" に変更
-        // 2. 社内Wikiなので、自分の記事だけでなく「全員分」見れるように where("uid", "==", uid) を削除します
         const q = query(collection(db, "wiki_pages"), orderBy("createdAt", "desc"));
         
-        // データの変化を監視して自動更新
         unsubscribe = onSnapshot(q, (snapshot) => {
-            const listElement = document.getElementById('todo-list'); // 名前はそのまま活用
+            const listElement = document.getElementById('todo-list');
             listElement.innerHTML = '';
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                renderWikiPage(doc.id, data);// 描画関数へ
+                renderWikiPage(doc.id, data);
             });
         });
     }
 
     function renderWikiPage(id, data) {
         const li = document.createElement('li');
-        li.style.display = "block"; // 縦長に使う
+        li.style.display = "block";
         li.style.marginBottom = "20px";
         li.style.borderBottom = "2px solid #f0f2f5";
         
-        // ★ここを追加：本文のテキストをMarkdownとして解析し、HTMLに変換する
-        // 万が一データが空だったときのために、空文字（''）をデフォルト値にしています
+        // MarkdownテキストをHTMLに変換
         const markdownHtml = marked.parse(data.content || '');
 
         li.innerHTML = `
             <div style="width: 100%;">
                 <h3 style="margin: 0 0 10px 0; color: #007bff;">${data.title}</h3>
-                <div style="color: #333; line-height: 1.6; background: #fafafa; padding: 15px; border-radius: 8px;">${markdownHtml}</div>
+                <div class="wiki-markdown-content" style="color: #333; line-height: 1.6; background: #fafafa; padding: 15px; border-radius: 8px;">
+                    ${markdownHtml}
+                </div>
                 <div style="margin-top: 8px; font-size: 0.85rem; color: #888; text-align: right;">
                     投稿者: <strong>${data.userName || '不明'}</strong> | ${data.createdAt?.toDate().toLocaleString()}
                 </div>
@@ -163,7 +161,6 @@
         document.getElementById('todo-list').appendChild(li);
     }
 
-    // 削除関数もWiki用に対応
     window.deletePage = async (id, authorUid) => {
         if (currentUser.uid !== authorUid) {
             alert("自分が書いた記事以外は削除できません");
