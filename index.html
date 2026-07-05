@@ -18,6 +18,7 @@
         li { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
         .completed { text-decoration: line-through; color: #bbb; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -143,6 +144,10 @@
         li.style.marginBottom = "20px";
         li.style.borderBottom = "2px solid #f0f2f5";
         
+        // ★ここを追加：本文のテキストをMarkdownとして解析し、HTMLに変換する
+        // 万が一データが空だったときのために、空文字（''）をデフォルト値にしています
+        const markdownHtml = marked.parse(data.content || '');
+
         li.innerHTML = `
             <div style="width: 100%;">
                 <h3 style="margin: 0 0 10px 0; color: #007bff;">${data.title}</h3>
