@@ -5,53 +5,300 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Corporate Wiki</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
-        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
-        .auth-section { text-align: right; margin-bottom: 10px; }
-        .hidden { display: none; }
-        input, button, textarea { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; font-family: sans-serif; }
-        .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        button { cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold; }
-        button.logout { background: #6c757d; padding: 5px 10px; font-size: 12px; }
-        ul { list-style: none; padding: 0; }
-        li { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* Markdown表示用の微調整（リストなどの弾丸を出すため） */
-        .wiki-markdown-content ul { list-style: disc; padding-left: 20px; margin: 10px 0; }
-        .wiki-markdown-content ol { list-style: decimal; padding-left: 20px; margin: 10px 0; }
-        .wiki-markdown-content h1, .wiki-markdown-content h2, .wiki-markdown-content h3 { margin-top: 10px; margin-bottom: 5px; }
+        :root {
+            --bg: #eef1f6;
+            --surface: #ffffff;
+            --surface-alt: #f4f6f9;
+            --border: #e0e4ea;
+            --text: #1f2733;
+            --text-muted: #6b7280;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-tint: #eaf1ff;
+            --danger: #e0384c;
+            --danger-tint: #fdeced;
+            --warning: #b8790a;
+            --warning-tint: #fdf3e0;
+            --radius-lg: 12px;
+            --radius-md: 8px;
+            --radius-sm: 6px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #14161c;
+                --surface: #1d2027;
+                --surface-alt: #262a33;
+                --border: #343945;
+                --text: #e7e9ee;
+                --text-muted: #9aa1b0;
+                --primary: #4f8cff;
+                --primary-hover: #6ea0ff;
+                --primary-tint: #223050;
+                --danger: #ff6b7a;
+                --danger-tint: #3a2126;
+                --warning: #e3a13a;
+                --warning-tint: #3a301c;
+            }
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+        }
+
+        .page { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 22px;
+        }
+        .brand { display: flex; align-items: center; gap: 8px; }
+        .brand-icon { font-size: 1.4rem; }
+        .brand-title { color: var(--text); text-decoration: none; font-weight: 700; font-size: 1.25rem; }
+
+        .auth-section { display: flex; align-items: center; gap: 10px; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-name { font-size: 0.9rem; color: var(--text-muted); }
+
+        .hidden { display: none !important; }
+
+        input, textarea, select {
+            background: var(--surface);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            font-size: 14px;
+            font-family: inherit;
+            width: 100%;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-tint);
+        }
+        textarea { min-height: 260px; resize: vertical; line-height: 1.5; }
+
+        .field-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin: 10px 0 4px; }
+        .field-label:first-child { margin-top: 0; }
+
+        .btn {
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 14px;
+            padding: 9px 16px;
+            font-family: inherit;
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+        }
+        .btn-block { width: 100%; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        .btn-ghost { background: transparent; color: var(--text-muted); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--surface-alt); color: var(--text); }
+
+        .btn-warning { background: var(--warning-tint); color: var(--warning); }
+        .btn-warning:hover { filter: brightness(0.95); }
+
+        .btn-danger { background: var(--danger-tint); color: var(--danger); }
+        .btn-danger:hover { filter: brightness(0.95); }
+
+        ul { list-style: none; padding: 0; margin: 0; }
+
+        /* --- 2カラムレイアウト --- */
+        .app-layout {
+            display: flex;
+            align-items: flex-start;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 250px;
+            flex-shrink: 0;
+            align-self: stretch;
+            background: var(--surface-alt);
+            border-right: 1px solid var(--border);
+            padding: 18px 16px;
+            position: sticky;
+            top: 16px;
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
+        }
+
+        .sidebar-heading {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text-muted);
+            margin: 22px 0 8px;
+        }
+        .sidebar-heading:first-of-type { margin-top: 4px; }
+
+        .page-list { display: flex; flex-direction: column; gap: 1px; }
+        .page-link {
+            display: block;
+            padding: 6px 8px;
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.86rem;
+            line-height: 1.4;
+        }
+        .page-link:hover { background: var(--primary-tint); }
+        .page-link.active { background: var(--primary); color: #fff; font-weight: 600; }
+        .empty-state-sm { color: var(--text-muted); font-size: 0.82rem; padding: 6px 8px; }
+
+        /* ページ一覧の階層表示（サイドバーで作成したフォルダにページをぶら下げる） */
+        .tree-folder { list-style: none; }
+        .tree-folder > summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.86rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .tree-folder > summary::marker,
+        .tree-folder > summary::-webkit-details-marker { display: none; content: ''; }
+        .folder-name { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .folder-name::before { content: '▸'; display: inline-block; width: 14px; color: var(--text-muted); flex-shrink: 0; }
+        .tree-folder[open] > summary .folder-name::before { content: '▾'; }
+        .tree-folder > summary:hover { background: var(--primary-tint); }
+        .tree-folder .page-list { padding-left: 14px; margin-top: 1px; }
+        .folder-delete-btn {
+            background: none; border: none; color: var(--text-muted); font-size: 14px;
+            line-height: 1; cursor: pointer; padding: 2px 4px; border-radius: 4px; flex-shrink: 0;
+        }
+        .folder-delete-btn:hover { color: var(--danger); background: var(--danger-tint); }
+
+        .sidebar-new-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+
+        .main-content { flex: 1; min-width: 0; padding: 30px 40px; }
+
+        /* --- タグ --- */
+        .tag-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag-badge {
+            display: inline-flex;
+            align-items: center;
+            background: var(--surface);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .tag-badge:hover { border-color: var(--primary); color: var(--primary); }
+        .tag-badge.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .article-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 20px; }
+        .article-tags .tag-badge { background: var(--primary-tint); color: var(--primary); border-color: transparent; }
+
+        /* --- ホーム --- */
+        .home-view h2 { margin-top: 0; }
+        .text-muted { color: var(--text-muted); }
+        .recent-list { display: flex; flex-direction: column; gap: 8px; }
+        .recent-list a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .recent-list a:hover { text-decoration: underline; }
+        .recent-date { color: var(--text-muted); font-size: 0.8rem; margin-left: 8px; }
+
+        /* --- 記事表示 --- */
+        .breadcrumb { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; }
+        .breadcrumb a { color: var(--text-muted); text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; color: var(--primary); }
+        .breadcrumb-sep { margin: 0 6px; }
+
+        .article-title {
+            font-size: 1.7rem;
+            font-weight: 700;
+            margin: 0 0 10px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .wiki-markdown-content { color: var(--text); line-height: 1.75; }
+        .wiki-markdown-content ul { list-style: disc; padding-left: 22px; margin: 10px 0; }
+        .wiki-markdown-content ol { list-style: decimal; padding-left: 22px; margin: 10px 0; }
+        .wiki-markdown-content h1, .wiki-markdown-content h2, .wiki-markdown-content h3 { margin-top: 20px; margin-bottom: 8px; }
+        .wiki-markdown-content pre { overflow-x: auto; background: var(--surface-alt); padding: 12px; border-radius: var(--radius-sm); }
+        .wiki-markdown-content code { background: var(--surface-alt); padding: 1px 5px; border-radius: 4px; }
+        .wiki-markdown-content blockquote { border-left: 3px solid var(--border); margin: 10px 0; padding: 2px 16px; color: var(--text-muted); }
+
+        .article-meta { margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); }
+        .article-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+        /* --- 投稿・編集フォーム --- */
+        .page-form { max-width: 720px; }
+        .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+        #msg { text-align: center; color: var(--text-muted); padding: 60px 16px; margin: 0; font-size: 1rem; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
-<div class="container">
-    <div class="auth-section">
-        <button id="login-btn">Googleでログイン</button>
-        <span id="user-info" class="hidden">
-            <span id="user-name"></span>
-            <button id="logout-btn" class="logout">ログアウト</button>
-        </span>
+<div class="page">
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-icon" aria-hidden="true">📘</span>
+            <a href="#/" class="brand-title">Corporate Wiki</a>
+        </div>
+        <div class="auth-section">
+            <button id="login-btn" class="btn btn-primary">Googleでログイン</button>
+            <div id="user-info" class="user-info hidden">
+                <span id="user-name" class="user-name"></span>
+                <button id="logout-btn" class="btn btn-ghost btn-sm">ログアウト</button>
+            </div>
+        </div>
+    </header>
+
+    <div id="app-content" class="app-layout hidden">
+        <aside class="sidebar">
+            <input type="text" id="search-input" placeholder="ページを検索">
+            <div class="sidebar-new-actions">
+                <button id="new-page-btn" class="btn btn-primary btn-block">＋ 新規ページ</button>
+                <button id="new-folder-btn" class="btn btn-ghost btn-block">＋ 新規フォルダ</button>
+            </div>
+
+            <h2 class="sidebar-heading">ページ一覧</h2>
+            <ul id="page-list" class="page-list"></ul>
+
+            <h2 class="sidebar-heading">タグ</h2>
+            <div id="tag-filter" class="tag-filter"></div>
+        </aside>
+
+        <main id="main-content" class="main-content"></main>
     </div>
 
-    <h2>Corporate Wiki</h2>
-    
-    <div id="app-content" class="hidden">
-        <div class="input-group">
-            <input type="text" id="wiki-title" placeholder="記事のタイトル（例：電力市場の動向について）">
-            <textarea id="wiki-content" placeholder="本文を入力...（Markdownが使えます）" style="height: 150px; padding: 10px; border-radius: 8px; border: 1px solid #ddd;"></textarea>
-            <button id="add-btn">記事を投稿する</button>
-        </div>
-        <ul id="todo-list"></ul>
-    </div>
     <p id="msg">ログインしてください</p>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    
+    import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, updateDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
     // 修正：外側のスクリプトタグで読み込んだ marked をモジュール内で使えるように紐付ける
     const marked = window.marked;
 
@@ -71,16 +318,67 @@
 
     let currentUser = null;
     let unsubscribe = null;
+    let unsubscribeFolders = null;
+    let currentPages = [];
+    let currentFolders = [];
+
+    // --- 画面状態（ページ一覧はサイドバー、本文はここで管理する現在の表示対象） ---
+    let selectedPageId = null;
+    let isCreating = false;
+    let isCreatingFolder = false;
+    let isEditingSelected = false;
+    let searchQuery = '';
+    let selectedTagFilter = null;
+
+    function parseTags(text) {
+        const seen = new Set();
+        (text || '').split(',').forEach((tag) => {
+            const trimmed = tag.trim();
+            if (trimmed) seen.add(trimmed);
+        });
+        return Array.from(seen);
+    }
+
+    // --- ハッシュルーティング（#/page/<id> / #/new / #/new-folder） ---
+    function parseHash() {
+        const hash = location.hash;
+        selectedPageId = null;
+        isCreating = false;
+        isCreatingFolder = false;
+
+        if (hash.startsWith('#/page/')) {
+            selectedPageId = decodeURIComponent(hash.slice('#/page/'.length));
+        } else if (hash === '#/new') {
+            isCreating = true;
+        } else if (hash === '#/new-folder') {
+            isCreatingFolder = true;
+        }
+        isEditingSelected = false;
+    }
+
+    window.addEventListener('hashchange', () => {
+        parseHash();
+        renderPageList();
+        renderMain();
+    });
+    parseHash();
 
     // --- ログイン・ログアウト処理 ---
     document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
     document.getElementById('logout-btn').onclick = () => signOut(auth);
+    document.getElementById('new-page-btn').onclick = () => { location.hash = '#/new'; };
+    document.getElementById('new-folder-btn').onclick = () => { location.hash = '#/new-folder'; };
+    document.getElementById('search-input').oninput = (e) => {
+        searchQuery = e.target.value;
+        renderPageList();
+    };
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user;
             showApp(user);
             fetchWikiPages();
+            fetchFolders();
         } else {
             currentUser = null;
             hideApp();
@@ -100,74 +398,409 @@
         document.getElementById('user-info').classList.add('hidden');
         document.getElementById('app-content').classList.add('hidden');
         document.getElementById('msg').classList.remove('hidden');
-        document.getElementById('todo-list').innerHTML = '';
+        currentPages = [];
+        currentFolders = [];
+        searchQuery = '';
+        selectedTagFilter = null;
+        document.getElementById('search-input').value = '';
+        document.getElementById('page-list').innerHTML = '';
+        document.getElementById('tag-filter').innerHTML = '';
+        document.getElementById('main-content').innerHTML = '';
+        if (location.hash) location.hash = '';
         if (unsubscribe) unsubscribe();
+        if (unsubscribeFolders) unsubscribeFolders();
     }
 
-    // --- データベース操作 ---
-
-    document.getElementById('add-btn').onclick = async () => {
-        const title = document.getElementById('wiki-title').value;
-        const content = document.getElementById('wiki-content').value;
-        if (!title || !content || !currentUser) return;
-
-        await addDoc(collection(db, "wiki_pages"), {
-            uid: currentUser.uid,
-            userName: currentUser.displayName,
-            title: title,
-            content: content,
-            createdAt: new Date()
-        });
-        
-        document.getElementById('wiki-title').value = '';
-        document.getElementById('wiki-content').value = '';
-    };
+    // --- データベース購読 ---
 
     function fetchWikiPages() {
         const q = query(collection(db, "wiki_pages"), orderBy("createdAt", "desc"));
-        
+
         unsubscribe = onSnapshot(q, (snapshot) => {
-            const listElement = document.getElementById('todo-list');
-            listElement.innerHTML = '';
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                renderWikiPage(doc.id, data);
-            });
+            currentPages = snapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() }));
+            renderPageList();
+            renderTagFilterBar();
+            renderMain();
         });
     }
 
-    function renderWikiPage(id, data) {
-        const li = document.createElement('li');
-        li.style.display = "block";
-        li.style.marginBottom = "20px";
-        li.style.borderBottom = "2px solid #f0f2f5";
-        
-        // MarkdownテキストをHTMLに変換
-        const markdownHtml = marked.parse(data.content || '');
+    function fetchFolders() {
+        const q = query(collection(db, "wiki_folders"));
 
-        li.innerHTML = `
-            <div style="width: 100%;">
-                <h3 style="margin: 0 0 10px 0; color: #007bff;">${data.title}</h3>
-                <div class="wiki-markdown-content" style="color: #333; line-height: 1.6; background: #fafafa; padding: 15px; border-radius: 8px;">
-                    ${markdownHtml}
-                </div>
-                <div style="margin-top: 8px; font-size: 0.85rem; color: #888; text-align: right;">
-                    投稿者: <strong>${data.userName || '不明'}</strong> | ${data.createdAt?.toDate().toLocaleString()}
-                </div>
-            </div>
-            <div style="text-align: right; margin-bottom: 10px;">
-                <button onclick="deletePage('${id}', '${data.uid}')" style="background: #dc3545; padding: 4px 8px; font-size: 12px;">記事を削除</button>
-            </div>
-        `;
-        document.getElementById('todo-list').appendChild(li);
+        unsubscribeFolders = onSnapshot(q, (snapshot) => {
+            currentFolders = snapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() }));
+            renderPageList();
+            renderMain();
+        });
     }
 
-    window.deletePage = async (id, authorUid) => {
-        if (currentUser.uid !== authorUid) {
-            alert("自分が書いた記事以外は削除できません");
+    // --- サイドバー：ページ一覧（フォルダはサイドバーで作成し、ページはfolderIdで所属する） ---
+
+    // フォルダとページを親子関係の木構造にまとめる。folderIdが存在しない/削除済みの場合はルート扱い
+    function buildFolderTree(folders, pages) {
+        const nodesById = new Map();
+        folders.forEach(({ id, data }) => nodesById.set(id, { id, name: data.name, parentId: data.parentId || null, children: [], pages: [] }));
+
+        const root = { id: null, name: null, children: [], pages: [] };
+        nodesById.forEach((node) => {
+            const parent = node.parentId ? nodesById.get(node.parentId) : null;
+            (parent || root).children.push(node);
+        });
+
+        pages.forEach((page) => {
+            const folder = page.data.folderId ? nodesById.get(page.data.folderId) : null;
+            (folder || root).pages.push(page);
+        });
+
+        return root;
+    }
+
+    function nodeHasVisibleContent(node) {
+        return node.pages.length > 0 || node.children.some(nodeHasVisibleContent);
+    }
+
+    function subtreeContainsSelected(node) {
+        if (node.pages.some((p) => p.id === selectedPageId)) return true;
+        return node.children.some(subtreeContainsSelected);
+    }
+
+    function renderFolderNode(node, forceOpen) {
+        let childFolders = [...node.children].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+        if (forceOpen) childFolders = childFolders.filter(nodeHasVisibleContent);
+
+        const folderHtml = childFolders.map((folder) => {
+            const shouldOpen = forceOpen || subtreeContainsSelected(folder);
+            return `<li>
+                <details class="tree-folder"${shouldOpen ? ' open' : ''}>
+                    <summary>
+                        <span class="folder-name">${escapeHtml(folder.name)}</span>
+                        <button type="button" class="folder-delete-btn" title="フォルダを削除" onclick="event.preventDefault(); event.stopPropagation(); deleteFolder('${folder.id}')">×</button>
+                    </summary>
+                    <ul class="page-list">${renderFolderNode(folder, forceOpen)}</ul>
+                </details>
+            </li>`;
+        }).join('');
+
+        const pagesSorted = [...node.pages].sort((a, b) => a.data.title.localeCompare(b.data.title, 'ja'));
+        const pagesHtml = pagesSorted.map(({ id, data }) =>
+            `<li><a href="#/page/${id}" class="page-link${id === selectedPageId ? ' active' : ''}">${escapeHtml(data.title)}</a></li>`
+        ).join('');
+
+        return folderHtml + pagesHtml;
+    }
+
+    // フォルダ選択用ドロップダウンの選択肢を、インデント付きで平坦化する
+    function flattenFoldersForSelect(node, depth = 0) {
+        let result = [];
+        const children = [...node.children].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+        children.forEach((child) => {
+            result.push({ id: child.id, name: child.name, depth });
+            result = result.concat(flattenFoldersForSelect(child, depth + 1));
+        });
+        return result;
+    }
+
+    function renderPageList() {
+        const listElement = document.getElementById('page-list');
+        const q = searchQuery.trim().toLowerCase();
+
+        let pages = currentPages;
+        if (selectedTagFilter) pages = pages.filter(({ data }) => (data.tags || []).includes(selectedTagFilter));
+        if (q) pages = pages.filter(({ data }) => data.title.toLowerCase().includes(q) || (data.content || '').toLowerCase().includes(q));
+
+        // フィルタ中は該当ページが見えるよう全フォルダを開き、空になったフォルダは非表示にする
+        const forceOpen = Boolean(q || selectedTagFilter);
+        const tree = buildFolderTree(currentFolders, pages);
+
+        if (forceOpen && !nodeHasVisibleContent(tree)) {
+            listElement.innerHTML = '<li class="empty-state-sm">該当するページがありません</li>';
             return;
         }
-        if(confirm("この記事を削除しますか？")) await deleteDoc(doc(db, "wiki_pages", id));
+
+        listElement.innerHTML = renderFolderNode(tree, forceOpen);
+    }
+
+    function renderTagFilterBar() {
+        const filterElement = document.getElementById('tag-filter');
+        const allTags = new Set();
+        currentPages.forEach(({ data }) => (data.tags || []).forEach((tag) => allTags.add(tag)));
+
+        if (allTags.size === 0) {
+            filterElement.innerHTML = '';
+            return;
+        }
+
+        const allBadge = `<span class="tag-badge${selectedTagFilter === null ? ' active' : ''}" data-tag="">すべて</span>`;
+        const tagBadges = Array.from(allTags).sort((a, b) => a.localeCompare(b, 'ja')).map((tag) =>
+            `<span class="tag-badge${selectedTagFilter === tag ? ' active' : ''}" data-tag="${escapeAttr(tag)}">${escapeHtml(tag)}</span>`
+        ).join('');
+        filterElement.innerHTML = allBadge + tagBadges;
+    }
+
+    // タグは自由入力文字列のためinline onclickでの埋め込みを避け、data-tag属性 + 委譲リスナーで処理する
+    document.getElementById('app-content').addEventListener('click', (e) => {
+        const badge = e.target.closest('.tag-badge');
+        if (!badge) return;
+        selectedTagFilter = badge.dataset.tag || null;
+        renderPageList();
+        renderTagFilterBar();
+    });
+
+    // --- メインエリア ---
+
+    function renderMain() {
+        const mainElement = document.getElementById('main-content');
+
+        if (isCreating) {
+            mainElement.innerHTML = renderComposerForm();
+            return;
+        }
+
+        if (isCreatingFolder) {
+            mainElement.innerHTML = renderFolderComposerForm();
+            return;
+        }
+
+        const page = selectedPageId ? currentPages.find((p) => p.id === selectedPageId) : null;
+        if (!page) {
+            mainElement.innerHTML = renderHome();
+            return;
+        }
+
+        mainElement.innerHTML = isEditingSelected
+            ? renderEditForm(page.id, page.data)
+            : renderArticleView(page.id, page.data);
+    }
+
+    function renderHome() {
+        const recent = [...currentPages]
+            .sort((a, b) => (b.data.createdAt?.toMillis() || 0) - (a.data.createdAt?.toMillis() || 0))
+            .slice(0, 5);
+
+        const recentHtml = recent.length > 0
+            ? `<ul class="recent-list">${recent.map(({ id, data }) =>
+                `<li><a href="#/page/${id}">${escapeHtml(data.title)}</a><span class="recent-date">${data.createdAt?.toDate().toLocaleDateString()}</span></li>`
+              ).join('')}</ul>`
+            : '<p class="text-muted">まだ記事がありません。「＋ 新規ページ」から最初のページを作成しましょう。</p>';
+
+        return `
+            <div class="home-view">
+                <h2>ようこそ、Corporate Wikiへ</h2>
+                <p class="text-muted">左のページ一覧から記事を選択するか、「＋ 新規ページ」で新しいページを、「＋ 新規フォルダ」でフォルダを作成してください。</p>
+                <h3 class="sidebar-heading" style="margin-left: 0;">最近更新されたページ</h3>
+                ${recentHtml}
+            </div>
+        `;
+    }
+
+    // 所属フォルダを親までたどってパンくずリストを作る
+    function renderBreadcrumb(folderId) {
+        if (!folderId) return '';
+        const foldersById = new Map(currentFolders.map((f) => [f.id, f.data]));
+        const chain = [];
+        let currentId = folderId;
+        let guard = 0;
+        while (currentId && foldersById.has(currentId) && guard < 20) {
+            chain.unshift(foldersById.get(currentId).name);
+            currentId = foldersById.get(currentId).parentId || null;
+            guard++;
+        }
+        if (chain.length === 0) return '';
+        return `<div class="breadcrumb">${chain.map((name) => `<span>${escapeHtml(name)}</span>`).join('<span class="breadcrumb-sep">/</span>')}</div>`;
+    }
+
+    function renderArticleView(id, data) {
+        const markdownHtml = marked.parse(data.content || '');
+        const tagsHtml = (data.tags && data.tags.length > 0)
+            ? `<div class="article-tags">${data.tags.map((tag) => `<span class="tag-badge" data-tag="${escapeAttr(tag)}">${escapeHtml(tag)}</span>`).join('')}</div>`
+            : '';
+        const isAuthor = currentUser && currentUser.uid === data.uid;
+        const actionsHtml = isAuthor
+            ? `<div class="article-actions">
+                   <button onclick="startEdit('${id}')" class="btn btn-warning btn-sm">編集する</button>
+                   <button onclick="deletePage('${id}')" class="btn btn-danger btn-sm">削除する</button>
+               </div>`
+            : '';
+
+        const breadcrumbHtml = renderBreadcrumb(data.folderId);
+
+        return `
+            <article>
+                ${breadcrumbHtml}
+                <h1 class="article-title">${escapeHtml(data.title)}</h1>
+                ${tagsHtml}
+                <div class="wiki-markdown-content">${markdownHtml}</div>
+                <div class="article-meta">投稿者: <strong>${escapeHtml(data.userName || '不明')}</strong> | ${data.createdAt?.toDate().toLocaleString()}</div>
+                ${actionsHtml}
+            </article>
+        `;
+    }
+
+    function renderFolderSelectOptions(selectedFolderId, rootLabel = '（フォルダなし）') {
+        const folderTree = buildFolderTree(currentFolders, []);
+        const options = flattenFoldersForSelect(folderTree).map(({ id, name, depth }) =>
+            `<option value="${id}"${id === selectedFolderId ? ' selected' : ''}>${'　'.repeat(depth)}${escapeHtml(name)}</option>`
+        );
+        return `<option value=""${!selectedFolderId ? ' selected' : ''}>${rootLabel}</option>` + options.join('');
+    }
+
+    function renderPageFormHtml({ idSuffix, title, content, tags, folderId, onCancelAttr, onSaveAttr, submitLabel }) {
+        return `
+            <div class="page-form">
+                <label class="field-label" for="wiki-title-${idSuffix}">タイトル</label>
+                <input type="text" id="wiki-title-${idSuffix}" value="${escapeAttr(title)}">
+                <label class="field-label" for="wiki-folder-${idSuffix}">フォルダ</label>
+                <select id="wiki-folder-${idSuffix}">${renderFolderSelectOptions(folderId)}</select>
+                <label class="field-label" for="wiki-content-${idSuffix}">本文（Markdownが使えます）</label>
+                <textarea id="wiki-content-${idSuffix}">${escapeHtml(content)}</textarea>
+                <label class="field-label" for="wiki-tags-${idSuffix}">タグ</label>
+                <input type="text" id="wiki-tags-${idSuffix}" placeholder="カンマ区切り　例：市場,研修" value="${escapeAttr(tags.join(', '))}">
+                <div class="form-actions">
+                    <button onclick="${onCancelAttr}" class="btn btn-ghost">キャンセル</button>
+                    <button onclick="${onSaveAttr}" class="btn btn-primary">${submitLabel}</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderComposerForm() {
+        return '<h2>新規ページを作成</h2>' + renderPageFormHtml({
+            idSuffix: 'new', title: '', content: '', tags: [], folderId: null,
+            onCancelAttr: 'cancelNew()', onSaveAttr: 'submitNewPage()', submitLabel: '投稿する'
+        });
+    }
+
+    function renderEditForm(id, data) {
+        return '<h2>ページを編集</h2>' + renderPageFormHtml({
+            idSuffix: id, title: data.title, content: data.content || '', tags: data.tags || [], folderId: data.folderId || null,
+            onCancelAttr: 'cancelEdit()', onSaveAttr: `saveEdit('${id}')`, submitLabel: '保存する'
+        });
+    }
+
+    function renderFolderComposerForm() {
+        return `
+            <h2>新規フォルダを作成</h2>
+            <div class="page-form">
+                <label class="field-label" for="folder-name-new">フォルダ名</label>
+                <input type="text" id="folder-name-new" placeholder="例：電力事業">
+                <label class="field-label" for="folder-parent-new">親フォルダ</label>
+                <select id="folder-parent-new">${renderFolderSelectOptions(null, '（ルート直下）')}</select>
+                <div class="form-actions">
+                    <button onclick="cancelNew()" class="btn btn-ghost">キャンセル</button>
+                    <button onclick="submitNewFolder()" class="btn btn-primary">作成する</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function escapeAttr(text) {
+        return escapeHtml(text || '').replace(/"/g, '&quot;');
+    }
+
+    // --- 記事の作成・編集・削除 ---
+
+    window.submitNewPage = async () => {
+        const title = document.getElementById('wiki-title-new').value;
+        const content = document.getElementById('wiki-content-new').value;
+        const tags = parseTags(document.getElementById('wiki-tags-new').value);
+        const folderId = document.getElementById('wiki-folder-new').value || null;
+        if (!title || !content || !currentUser) return;
+
+        try {
+            const docRef = await addDoc(collection(db, "wiki_pages"), {
+                uid: currentUser.uid,
+                userName: currentUser.displayName,
+                title, content, tags, folderId,
+                createdAt: new Date()
+            });
+            location.hash = `#/page/${docRef.id}`;
+        } catch (error) {
+            alert('ページの作成に失敗しました: ' + error.message);
+        }
+    };
+
+    window.cancelNew = () => { location.hash = ''; };
+
+    window.submitNewFolder = async () => {
+        const name = document.getElementById('folder-name-new').value.trim();
+        const parentId = document.getElementById('folder-parent-new').value || null;
+        if (!name || !currentUser) return;
+
+        try {
+            await addDoc(collection(db, "wiki_folders"), {
+                name, parentId,
+                uid: currentUser.uid,
+                createdAt: new Date()
+            });
+            location.hash = '';
+        } catch (error) {
+            alert('フォルダの作成に失敗しました: ' + error.message);
+        }
+    };
+
+    window.deleteFolder = async (id) => {
+        const hasPages = currentPages.some((p) => p.data.folderId === id);
+        const hasSubfolders = currentFolders.some((f) => f.data.parentId === id);
+        if (hasPages || hasSubfolders) {
+            alert('フォルダの中にページまたはフォルダが残っているため削除できません。先に中身を空にしてください。');
+            return;
+        }
+        if (!confirm('このフォルダを削除しますか？')) return;
+        try {
+            await deleteDoc(doc(db, "wiki_folders", id));
+        } catch (error) {
+            alert('フォルダの削除に失敗しました: ' + error.message);
+        }
+    };
+
+    window.startEdit = (id) => {
+        const page = currentPages.find((p) => p.id === id);
+        if (!page || !currentUser || currentUser.uid !== page.data.uid) return;
+        isEditingSelected = true;
+        renderMain();
+    };
+
+    window.cancelEdit = () => {
+        isEditingSelected = false;
+        renderMain();
+    };
+
+    window.saveEdit = async (id) => {
+        const page = currentPages.find((p) => p.id === id);
+        if (!page || !currentUser || currentUser.uid !== page.data.uid) return;
+
+        const title = document.getElementById(`wiki-title-${id}`).value;
+        const content = document.getElementById(`wiki-content-${id}`).value;
+        const tags = parseTags(document.getElementById(`wiki-tags-${id}`).value);
+        const folderId = document.getElementById(`wiki-folder-${id}`).value || null;
+        if (!title || !content) return;
+
+        try {
+            await updateDoc(doc(db, "wiki_pages", id), { title, content, tags, folderId });
+            isEditingSelected = false;
+            renderMain();
+        } catch (error) {
+            alert('ページの更新に失敗しました: ' + error.message);
+        }
+    };
+
+    window.deletePage = async (id) => {
+        const page = currentPages.find((p) => p.id === id);
+        if (!page || !currentUser || currentUser.uid !== page.data.uid) return;
+        if (!confirm('このページを削除しますか？')) return;
+
+        try {
+            await deleteDoc(doc(db, "wiki_pages", id));
+            if (selectedPageId === id) location.hash = '';
+        } catch (error) {
+            alert('ページの削除に失敗しました: ' + error.message);
+        }
     };
 </script>
 </body>
