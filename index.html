@@ -21,6 +21,7 @@
         .wiki-markdown-content ol { list-style: decimal; padding-left: 20px; margin: 10px 0; }
         .wiki-markdown-content h1, .wiki-markdown-content h2, .wiki-markdown-content h3 { margin-top: 10px; margin-bottom: 5px; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -51,8 +52,8 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     
-    // ★Markdownライブラリをモジュール形式で直接読み込む（確実な方法）
-    import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+    // 修正：外側のスクリプトタグで読み込んだ marked をモジュール内で使えるように紐付ける
+    const marked = window.marked;
 
     const firebaseConfig = {
         apiKey: "AIzaSyB6LzMo95UjoFkGncbRqU7Kis4fGCmK3Pw",
